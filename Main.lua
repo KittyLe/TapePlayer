@@ -6,7 +6,6 @@ local buffer = require("doubleBuffering")
 local bigLetters = require("bigLetters")
 local unicode = require("unicode")
 local component = require("component")
-local fs = require("filesystem")
 local context = require("context")
 local serialization = require("serialization")
 local ecs = require("ECSAPI")
@@ -33,7 +32,9 @@ else
   drive = component.tape_drive
 end
 
-
+  print("Tape Player Dev Edition")
+  print("InfO:")
+  print(drive.getLabel())
   computer.beep()
   os.sleep(0.1)
   computer.beep()
@@ -52,39 +53,33 @@ end
   computer.beep()
   os.sleep(0.1)
 
-local pathToSaveStations = "MineOS/System/Radio/Stations.cfg"
-local stationNameLimit = 8
-local spaceBetweenStations = 8
-local countOfStationsLimit = 9
 local lineHeight
 
 local config = {
   colors = {
     background = 0x1b1b1b,
-    line = 0xFFFFFF,
-    lineShadow = 0x000000,
-    activeStation = 0xFFA800,
-    otherStation = 0xBBBBBB,
     bottomToolBarDefaultColor = 0xaaaaaa,
     bottomToolBarCurrentColor = 0xFFA800,
   },
 }
 
---Объекты для тача
+local function drawName(x, y, name, color)
+	buffer.drawText(x, y, color, name)
+end
+
+local function drawNamv()
+	local prevWidth, currentWidth, nextWidth, name
+  if tape.getLabel() == "" then
+      name = "Not labeled."
+  else
+  name = drive.getLabel()
+	currentWidth = bigLetters.getTextSize(name)
+	local x, y = math.floor(buffer.getWidth() / 2 - currentWidth / 2), math.floor(buffer.getHeight() / 2 - 3)
+	drawName(x, y, name, config.colors.bottomToolBarCurrentColor)
+end
+end
+
 local obj = {}
-
-local function drawStation(x, y, name, color)
-  bigLetters.drawText(x, y, color, name)
-end
-
-local function drawLine()
-  local x = math.floor(buffer.getWidth() / 2)
-  for i = 1, lineHeight do
-    buffer.text(x + 1, i, config.colors.lineShadow, "▎")
-    buffer.text(x, i, config.colors.line, "▍")
-  end
-end
-
 
 local function drawMenu()
   local width = 36 + (3 * 2 + 2)
@@ -97,12 +92,12 @@ local function drawMenu()
   obj.tapePause = {x, y, x + 4, y + 3}
   x = bigLetters.drawText(x, y, config.colors.bottomToolBarDefaultColor, "||", "*") + 1
   x = x + 3
-  
+
   local color
-  
+
   x = x + 2
   obj.tapePlay = {x, y, x + 4, y + 3}
-  x = bigLetters.drawText(x, y, config.colors.bottomToolBarDefaultColor, "|>", "*") + 1
+  x = bigLetters.drawText(x, y, config.colors.bottomToolBarDefaultColor, "", "*") + 1
   x = x + 2
 
   x = x + 8
@@ -127,7 +122,7 @@ local function volume(i)
   drive.setVolume(v)
 end
   end
-  
+
 local function play()
   if drive.getState() == "PLAYING" then
   GUI.alert("Tape is already playing.")
@@ -152,13 +147,13 @@ while true do
   if e[1] == "touch" then
     if e[5] == 0 then
       if ecs.clickedAtArea(e[3], e[4], obj.tapePlay[1], obj.tapePlay[2], obj.tapePlay[3], obj.tapePlay[4]) then
-       bigLetters.drawText(obj.tapePlay[1], obj.tapePlay[2], config.colors.bottomToolBarDefaultColor, "|>", "*") 
+       bigLetters.drawText(obj.tapePlay[1], obj.tapePlay[2], config.colors.bottomToolBarDefaultColor, "|>", "*")
        buffer.drawChanges()
         os.sleep(0.2)
         play()
         drawAll()
       elseif ecs.clickedAtArea(e[3], e[4], obj.tapePause[1], obj.tapePause[2], obj.tapePause[3], obj.tapePause[4]) then
-        bigLetters.drawText(obj.tapePause[1], obj.tapePause[2], config.colors.bottomToolBarDefaultColor, "||", "*") 
+        bigLetters.drawText(obj.tapePause[1], obj.tapePause[2], config.colors.bottomToolBarDefaultColor, "||", "*")
         buffer.drawChanges()
         os.sleep(0.2)
         pause()
@@ -176,64 +171,6 @@ while true do
         os.sleep(0.2)
         drawAll()
       end
-    else
-      local action = context.menu(e[3], e[4], {"Добавить станцию", #radioStations >= countOfStationsLimit}, {"Удалить станцию", #radioStations < 2}, "-", {"О программе"}, "-", {"Выход"})
-      if action == "Добавить станцию" then
-        local data = ecs.universalWindow("auto", "auto", 36, 0x262626, true,
-          {"EmptyLine"},
-          {"CenterText", ecs.colors.orange, "Добавить станцию"},
-          {"EmptyLine"},
-          {"Input", 0xFFFFFF, ecs.colors.orange, "Название станции"},
-          {"Input", 0xFFFFFF, ecs.colors.orange, "URL-ссылка на стрим"},
-          {"EmptyLine"},
-          {"Button", {ecs.colors.orange, 0x262626, "OK"}, {0x999999, 0xffffff, "Отмена"}}
-        )
-        if data[3] == "OK" then
-          table.insert(radioStations, {name = data[1], url = data[2]})
-          saveStations()
-          drawAll()
-        end
-      elseif action == "Удалить станцию" then
-        table.remove(radioStations, radioStations.currentStation)
-        saveStations()
-        drawAll()
-
-      elseif action == "О программе" then
-        ecs.universalWindow("auto", "auto", 36, 0x262626, true, 
-          {"EmptyLine"},
-          {"CenterText", ecs.colors.orange, "Radio v1.0"}, 
-          {"EmptyLine"},
-          {"CenterText", 0xFFFFFF, "Автор:"},
-          {"CenterText", 0xBBBBBB, "Тимофеев Игорь"},
-          {"CenterText", 0xBBBBBB, "vk.com/id7799889"},
-          {"EmptyLine"},
-          {"CenterText", 0xFFFFFF, "Тестер:"},
-          {"CenterText", 0xBBBBBB, "Олег Гречкин"}, 
-          {"CenterText", 0xBBBBBB, "http://vk.com/id250552893"},
-          {"EmptyLine"},
-          {"CenterText", 0xFFFFFF, "Автор идеи:"},
-          {"CenterText", 0xBBBBBB, "MrHerobrine с Dreamfinity"}, 
-          {"EmptyLine"},
-          {"Button", {ecs.colors.orange, 0xffffff, "OK"}}
-        )
-      elseif action == "Выход" then
-        buffer.square(1, 1, buffer.getWidth(), buffer.getHeight(), config.colors.background, 0xFFFFFF, " ")
-        buffer.draw()
-        ecs.prepareToExit()
-        radio.stop()
-        return
       end
-    end
-
-  elseif e[1] == "scroll" then
-    switchStation(e[5])
-    drawAll()
-  end
+      end
 end
-
-
-
-
-
-
-
