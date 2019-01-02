@@ -68,8 +68,8 @@ local function mainMenu(force)
 		{color = 0xE1E1E1, text = "Welcome to MultiScreen software"},
 		" ",
 		"Here you can combine multiple screens into a single cluster and draw huge images saved in OCIF5 format. There's some useful tips for best experience:",
-		"• Use maximum size constructions for each screen (8x6 blocks)",
-		"• Connect more power sources to screens if they're blinking",
+		"â€¢ Use maximum size constructions for each screen (8x6 blocks)",
+		"â€¢ Connect more power sources to screens if they're blinking",
 		" "
 	}
 
@@ -288,7 +288,6 @@ local function mainMenu(force)
 	end
 
 	actionComboBox.onItemSelected()
-	mainContainer:drawOnScreen()
 end
 
 --------------------------------------------------------------------------------
